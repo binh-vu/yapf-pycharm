@@ -1,14 +1,14 @@
 <idea-plugin>
   <id>com.toan2.yapf</id>
   <name>yapf-pycharm</name>
-  <version>1.0</version>
+  <version>1.2</version>
   <vendor email="binh@toan2.com" url="https://github.com/binh-vu/">Binh Vu</vendor>
 
   <description>
     Reformat (local) python code using google/yapf
 
     Requirement:
-      + YAPF must be pre-installed and could be invoked using sh -c yapf command.
+      + YAPF must be pre-installed and could be invoked using sh -c /usr/local/bin/yapf command.
   </description>
 
   <change-notes></change-notes>
@@ -18,9 +18,8 @@
 
   <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
        on how to target different products -->
-  <!-- uncomment to enable plugin in all products
   <depends>com.intellij.modules.lang</depends>
-  -->
+  <depends>com.intellij.modules.platform</depends>
 
   <extensions defaultExtensionNs="com.intellij">
     <!-- Add your extensions here -->

@@ -3,27 +3,25 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.PlatformDataKeys;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.vfs.VirtualFile;
 
 import java.io.*;
-import java.util.UUID;
 
 public class ReformatCode extends AnAction {
 
-    private byte[] reformatFile(String path) throws InterruptedException, IOException {
-        Process p = Runtime.getRuntime().exec(new String[]{
-                "sh", "-c",
-                String.format("yapf '%s'", path)
-        });
-        p.waitFor();
+    private Logger logger;
 
-        // read the formatted content
+    public ReformatCode() {
+        super();
+        this.logger = Logger.getInstance(ReformatCode.class);
+    }
+
+    private byte[] toByteArray(InputStream inputStream) throws IOException {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        InputStream inputStream = p.getInputStream();
-
-        int read = 0;
+        int read;
         byte[] bytes = new byte[1024];
 
         while ((read = inputStream.read(bytes)) != -1) {
@@ -33,8 +31,32 @@ public class ReformatCode extends AnAction {
         return byteArrayOutputStream.toByteArray();
     }
 
+    private byte[] getProcessStdout(Process p) throws IOException {
+        return toByteArray(p.getInputStream());
+    }
+
+    private byte[] getProcessStderr(Process p) throws IOException {
+        return toByteArray(p.getErrorStream());
+    }
+
+    private byte[] reformatFile(String path) throws InterruptedException, IOException {
+        Process p = Runtime.getRuntime().exec(new String[]{
+                "sh", "-c",
+                String.format("/usr/local/bin/yapf '%s'", path)
+        });
+        p.waitFor();
+
+        if (p.exitValue() != 0) {
+            logger.error(getProcessStderr(p));
+            throw new RuntimeException("Couldn't invoke reformat command");
+        }
+
+        // read the formatted content
+        return getProcessStdout(p);
+    }
+
     private void writeFileContent(InputStream inputStream, OutputStream outputStream) throws IOException {
-        int read = 0;
+        int read;
         byte[] bytes = new byte[1024];
 
         while ((read = inputStream.read(bytes)) != -1) {
@@ -62,15 +84,10 @@ public class ReformatCode extends AnAction {
         }
 
         try {
-            // save changes so that they don't invoke message box that need to synchronize file
+            // save changes so that IDE doesn't display message box
             FileDocumentManager fileDocumentManager = FileDocumentManager.getInstance();
             Document document = fileDocumentManager.getDocument(virtualFile);
             fileDocumentManager.saveDocument(document);
-
-//            // read its content and put it to the temporary file
-//            InputStream inputStream = virtualFile.getInputStream();
-//            File tmpFile = new File(String.format("/tmp/%s.py", UUID.randomUUID().toString()));
-//            this.writeFileContent(inputStream, new FileOutputStream(tmpFile));
 
             // reformat it using Google/YAPF
             byte[] formattedContent = this.reformatFile(virtualFile.getPath());
